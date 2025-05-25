@@ -86,7 +86,7 @@ class Speaker:
         if not os.path.exists(speaker_temp_dir):
             os.makedirs(speaker_temp_dir)
 
-        timestamp = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+        timestamp = datetime.now().strftime("%H_%M_%S") # %Y_%m_%d
         output_filename = os.path.join(speaker_temp_dir, f"output_audio_{timestamp}.mp3")
         with open(output_filename, "wb") as f:
             f.write(audio_stream.read())

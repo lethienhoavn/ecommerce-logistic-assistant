@@ -2,3 +2,10 @@ openai
 ollama
 gradio
 playsound
+langchain
+langchain-community
+langchain_chroma
+langchain_openai
+langchain-huggingface
+sentence-transformers
+faiss-cpu

@@ -1,4 +1,4 @@
-from llm.openai_model import call_openai
+from llm.openai_model import call_openai_with_tool, call_openai_with_kb, call_openai_with_kb_langchain
 import gradio as gr
 
 def stream_openai(history):
@@ -30,12 +30,16 @@ def stream_openai(history):
             Assistant: "To return a parcel, please follow the return instructions provided by the seller or courier. If you need specific help, I can guide you through the steps."
 
             Be friendly, supportive, and helpful in every response.
+
+            Remember, you are an expert in answering accurate questions for Parcel Perform. Give brief, accurate answers. If you don't know the answer, say so. Do not make anything up if you haven't been provided with relevant context.
         '''
     }
 
     messages = [system_prompt] + history
 
-    response_text, image = call_openai(messages)
+    # response_text, image = call_openai_with_tool(messages)
+    # response_text, image = call_openai_with_kb(messages)
+    response_text, image = call_openai_with_kb_langchain(messages)
 
     history += [{"role":"assistant", "content":response_text}]
 

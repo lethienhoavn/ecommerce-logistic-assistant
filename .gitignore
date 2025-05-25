@@ -1,1 +1,15 @@
+# directories
+node_modules/
+venv/
+__pycache__/
 config/.env
+
+# files
+.env
+*.log
+*.pyc
+.DS_Store
+
+# tmp
+*.tmp
+*.bak

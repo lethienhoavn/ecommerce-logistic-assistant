@@ -1,4 +1,4 @@
-from llm.openai_model import call_openai_with_tool, call_openai_with_kb, call_openai_with_kb_langchain
+from llm.openai_model import call_openai_with_tool, call_openai_with_kb, ChatbotLangChain
 import gradio as gr
 
 def stream_openai(history):
@@ -39,7 +39,7 @@ def stream_openai(history):
 
     # response_text, image = call_openai_with_tool(messages)
     # response_text, image = call_openai_with_kb(messages)
-    response_text, image = call_openai_with_kb_langchain(messages)
+    response_text, image = ChatbotLangChain.call_openai_with_kb_langchain(messages)
 
     history += [{"role":"assistant", "content":response_text}]
 

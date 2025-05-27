@@ -9,22 +9,61 @@ from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain_openai import ChatOpenAI
 from langchain.memory import ConversationBufferMemory
-from langchain.chains import ConversationalRetrievalChain
+from langchain_community.chat_message_histories import FileChatMessageHistory
+from langchain.chains import ConversationalRetrievalChain, LLMChain
+from langchain.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, \
+    HumanMessagePromptTemplate, MessagesPlaceholder
+from langchain.schema import SystemMessage
 
 openai.api_key = OPENAI_API_KEY
 
-# Init KnowledgeBaseLangchainReader
-KnowledgeBaseLangchainReader.read_file()
+class ChatbotLangChain():
 
+    ##### Prompt
+    system_prompt = '''
+            You are a helpful and professional virtual assistant for Parcel Perform, a global parcel tracking and delivery performance platform.
 
-def call_openai_with_kb_langchain(messages):
-    ''' messages including system_prompt + history(user & assistant messages) + new message 
-        Instead of relying on LLM tool to do intent detection (with semantic search) & entity extraction, we'll manually do it by ourself
-        Langchain handle all chat history, we just need to pass the last message as input when calling conversation_chain.invoke()
-    '''
+            Your main tasks are to:
+            - Assist users in tracking their parcels by providing status updates based on tracking numbers.
+            - Answer common questions about shipping, delivery times, delays, and returns.
+            - Provide clear instructions on how to use Parcel Perform services.
+            - Escalate complex issues politely by suggesting users contact customer support.
+
+            Always respond politely, clearly, and concisely. Use simple language that anyone can understand. 
+
+            If the user provides a tracking number, help them check the latest status and estimated delivery date.
+
+            Example interactions:
+
+            User: "Can you track my package with tracking number 123456789?"
+            Assistant: "Sure! Let me check the status of tracking number 123456789... Your parcel is currently in transit and expected to arrive on May 24th."
+
+            User: "What should I do if my package is delayed?"
+            Assistant: "I’m sorry for the delay. You can contact the sender or your local courier for more details. Would you like me to help find their contact info?"
+
+            User: "How do I return a parcel?"
+            Assistant: "To return a parcel, please follow the return instructions provided by the seller or courier. If you need specific help, I can guide you through the steps."
+
+            Be friendly, supportive, and helpful in every response.
+
+            Remember, you are an expert in answering accurate questions for Parcel Perform. Give brief, accurate answers. If you don't know the answer, say so. Do not make anything up if you haven't been provided with relevant context.
+        '''
+
+    chat_prompt = ChatPromptTemplate(
+        input_variables=["chat_history", "question"],
+        messages = [
+            SystemMessagePromptTemplate.from_template(system_prompt),
+            MessagesPlaceholder(variable_name="chat_history"),
+            HumanMessagePromptTemplate.from_template("{question}")
+        ]
+    )
 
     ##### Create Vector DB
+    print("Initializing Retriever, this may take a while....")
     embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+
+    # Init KnowledgeBaseLangchainReader
+    KnowledgeBaseLangchainReader.read_file()
 
     # # Chroma (SQL Lite)    
     # db_name = "product_vector_db"
@@ -34,31 +73,50 @@ def call_openai_with_kb_langchain(messages):
     
     # FAISS
     vectorstore = FAISS.from_documents(KnowledgeBaseLangchainReader.chunks, embedding=embeddings)
+    
+    # the retriever is an abstraction over the VectorStore that will be used during RAG
+    retriever = vectorstore.as_retriever() # search_kwargs={"k": 25} : can tune how many chunks to use in RAG
 
     ##### Create Conversation Chain
     # create a new Chat with OpenAI
     llm = ChatOpenAI(temperature=0.7, model_name=OPENAI_MODEL)
 
     # set up the conversation memory for the chat
-    memory = ConversationBufferMemory(memory_key='chat_history', return_messages=True)
-
-    # the retriever is an abstraction over the VectorStore that will be used during RAG
-    retriever = vectorstore.as_retriever() # search_kwargs={"k": 25} : can tune how many chunks to use in RAG
+    memory = ConversationBufferMemory(chat_memory=FileChatMessageHistory("resources/chat_history.json"),
+                                        memory_key='chat_history', 
+                                        return_messages=True)
 
     # putting it together: set up the conversation chain with the GPT 4o-mini LLM, the vector store and memory
-    conversation_chain = ConversationalRetrievalChain.from_llm(llm=llm, retriever=retriever, memory=memory) # , callbacks=[StdOutCallbackHandler()] : use to investigate what happen behind the scene
+    conversation_chain = ConversationalRetrievalChain.from_llm(llm=llm, 
+                                                                retriever=retriever, 
+                                                                memory=memory)
+                                                                # combine_docs_chain_kwargs={"prompt": chat_prompt}) # , callbacks=[StdOutCallbackHandler()] : use to investigate what happen behind the scene
 
-    # Wrapping in a function - note that history isn't used, as the memory is in the conversation_chain (in 'chat_history')
-    response_text = conversation_chain.invoke({"question": messages[-1]['content']})
-    print("response_text: ", response_text)
-    response_text = response_text['answer']
+    # conversation_chain = LLMChain(llm=llm,
+    #                                 prompt=chat_prompt, 
+    #                                 memory=memory) 
 
-    image = None
 
-    # call speaker
-    # Speaker.speak(response_text)
-    
-    return response_text, image
+    def call_openai_with_kb_langchain(messages):
+        ''' messages including system_prompt + history(user & assistant messages) + new message 
+                => Langchain already handle chat history, we just need to use the new message
+            Instead of relying on LLM tool to do intent detection (with semantic search) & entity extraction, we'll manually do it by ourself
+            Langchain handle all chat history, we just need to pass the last message as input when calling conversation_chain.invoke()
+        '''
+
+        # Wrapping in a function - note that history isn't used, as the memory is in the conversation_chain (in 'chat_history')
+        response_text = ChatbotLangChain.conversation_chain.invoke({"question": messages[-1]['content']})
+        print("response_text: ", response_text)
+
+        response_text = response_text['answer'] # for ConversationalRetrievalChain
+        # response_text = response_text['text'] # for LLMChain
+
+        image = None
+
+        # call speaker
+        # Speaker.speak(response_text)
+        
+        return response_text, image
 
 
 

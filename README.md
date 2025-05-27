@@ -72,7 +72,7 @@ http://localhost:7860
 
 ### 🔍 LLM Monitoring
 
-* **LangSmith, Weights & Biases, MLflow, Arize AI, WhyLabs** - monitor LLM performance, detect drift, and track input/output data
+* **LangSmith, LangFuse, Weights & Biases, MLflow, Arize AI, WhyLabs** - monitor LLM performance, detect drift, and track input/output data
 * **Prompt Tracking & Versioning** - keep records of prompt history and associated responses
 
 

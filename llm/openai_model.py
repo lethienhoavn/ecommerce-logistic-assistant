@@ -10,7 +10,7 @@ from langchain_community.vectorstores import FAISS
 from langchain_openai import ChatOpenAI
 from langchain.memory import ConversationBufferMemory
 from langchain_community.chat_message_histories import FileChatMessageHistory
-from langchain.chains import ConversationalRetrievalChain, LLMChain
+from langchain.chains import ConversationalRetrievalChain, LLMChain, RetrievalQA
 from langchain.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, \
     HumanMessagePromptTemplate, MessagesPlaceholder
 from langchain.schema import SystemMessage
@@ -68,20 +68,22 @@ class OpenAIChatbot():
         ##### Create Vector DB
         print("Load embeddings...")
         embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
-        faiss_index_path = "resources/faiss_index"
 
+        # # Chroma (SQL Lite)    
+        # db_name = "resources/product_vector_db"
+        # if not os.path.exists(db_name):
+        #     knowledgebaes_langchain_read = KnowledgeBaseLangchainReader()
+        #     vectorstore = Chroma.from_documents(documents=knowledgebaes_langchain_read.chunks, embedding=embeddings, persist_directory=db_name)
+        # else:
+        #     vectorstore = Chroma(persist_directory=db_name, embedding_function=embeddings)
+
+        faiss_index_path = "resources/faiss_index"
         if (not os.path.exists(faiss_index_path)):
             print("Initializing Retriever, this may take a while....")
 
             # Init KnowledgeBaseLangchainReader
             knowledgebaes_langchain_read = KnowledgeBaseLangchainReader()
 
-            # # Chroma (SQL Lite)    
-            # db_name = "resources/product_vector_db"
-            # if os.path.exists(db_name): # delete old collection otherwise duplicated
-            #     Chroma(persist_directory=db_name, embedding_function=embeddings).delete_collection()
-            # vectorstore = Chroma.from_documents(documents=knowledgebaes_langchain_read.chunks, embedding=embeddings, persist_directory=db_name)
-            
             # FAISS
             vectorstore = FAISS.from_documents(knowledgebaes_langchain_read.chunks, embedding=embeddings)
             vectorstore.save_local(faiss_index_path)
@@ -100,16 +102,23 @@ class OpenAIChatbot():
         memory = ConversationBufferMemory(memory_key='chat_history', 
                                             # chat_memory=FileChatMessageHistory("resources/chat_history.json"), # when history is long, input is very lengthy => better to use ConversationSummaryMemory than ConversationBufferMemory + FileChatMessageHistory (but with the cost of slower result because of 2 LLM passes)
                                             return_messages=True)
+        
+        # # RetrievalQA: only embedding retrieval for QA (1 turn, not for chat)
+        # self.conversation_chain = RetrievalQA(llm=llm,
+        #                                       retriever=retriever,
+        #                                       chain_type="stuff")
 
-        # putting it together: set up the conversation chain with the GPT 4o-mini LLM, the vector store and memory
+        # # LLMChain: only chat memory context
+        # self.conversation_chain = LLMChain(llm=llm,
+        #                                 memory=memory,  
+        #                                 prompt=chat_prompt) # verbose=True
+
+        # ConversationalRetrievalChain: chat memory context + embedding retrieval
         self.conversation_chain = ConversationalRetrievalChain.from_llm(llm=llm, 
                                                                     retriever=retriever, 
                                                                     memory=memory)
                                                                     # combine_docs_chain_kwargs={"prompt": chat_prompt}) # , callbacks=[StdOutCallbackHandler()] : use to investigate what happen behind the scene
 
-        # self.conversation_chain = LLMChain(llm=llm,
-        #                                 prompt=chat_prompt, 
-        #                                 memory=memory)  # verbose=True
 
     def call_openai_with_kb_langchain(self, messages):
         ''' messages including system_prompt + history(user & assistant messages) + new message 

@@ -6,9 +6,7 @@ from langchain.text_splitter import CharacterTextSplitter
 
 class KnowledgeBaseLangchainReader:
 
-    chunks = []
-
-    def read_file():
+    def __init__(self):
         # Load CSV
         df = pd.read_csv("knowledge-base/item_price.csv", sep=';')
 
@@ -25,31 +23,26 @@ class KnowledgeBaseLangchainReader:
             documents.append(Document(page_content=content, metadata=metadata))
         
         text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
-        KnowledgeBaseLangchainReader.chunks = text_splitter.split_documents(documents)
+        self.chunks = text_splitter.split_documents(documents)
 
-        print("len chunks: ", len(KnowledgeBaseLangchainReader.chunks))
+        print("len chunks: ", len(self.chunks))
 
-        
+
 
 class KnowledgeBaseReader:
 
-    item2desc = dict()
-
-    def read_file():
+    def __init__(self):
         df = pd.read_csv('knowledge-base/item_price.csv', sep=";")
-        KnowledgeBaseReader.item2desc = {
+        self.item2desc = {
             row['item_name']: f"Description: {row['description']} | Price: {row['price']} {row['currency']}"
             for _, row in df.iterrows()
         }
 
-    def retrieve_context(ask_item):
-        if len(KnowledgeBaseReader.item2desc) == 0:
-            KnowledgeBaseReader.read_file()
-
+    def retrieve_context(self, ask_item):
         print("ask_item: ", ask_item)
 
         description = set()
-        for item, desc in KnowledgeBaseReader.item2desc.items():
+        for item, desc in self.item2desc.items():
             for word in ask_item.split(): # Drawback: word split & look up is not really right here => better to use phrase vector with semantic search !
                 if word.lower() in item.lower():
                     description.add(desc)

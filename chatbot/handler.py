@@ -1,11 +1,11 @@
-from llm.openai_model import call_openai_with_tool, call_openai_with_kb, ChatbotLangChain
+from llm.openai_model import OpenAIChatbot
 import gradio as gr
 
 
 class Handler:
 
     def __init__(self):
-        self.chatbot_langchain = ChatbotLangChain()
+        self.openai_chatbot = OpenAIChatbot()
 
 
     def streaming(self, history):
@@ -44,9 +44,9 @@ class Handler:
 
         messages = [system_prompt] + history
 
-        # response_text, image = call_openai_with_tool(messages)
-        # response_text, image = call_openai_with_kb(messages)
-        response_text, image = self.chatbot_langchain.call_openai_with_kb_langchain(messages)
+        # response_text, image = self.openai_chatbot.call_openai_with_tool(messages)
+        # response_text, image = self.openai_chatbot.call_openai_with_kb(messages)
+        response_text, image = self.openai_chatbot.call_openai_with_kb_langchain(messages)
 
         history += [{"role":"assistant", "content":response_text}]
 

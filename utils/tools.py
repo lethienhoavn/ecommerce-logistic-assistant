@@ -8,52 +8,56 @@ from playsound import playsound
 from datetime import datetime
 
 class ItemPrice:
-    item_prices = {"box": "$5", "envelope": "$2", "gants": "$1"}
 
-    price_function = {
-        "name": "get_item_price",
-        "description": "Get the price of an item. Call this whenever you need to know the item price, for example when a user asks 'How much does this item cost ?'",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "item": {
-                    "type": "string",
-                    "description": "The item that the user asks",
+    def __init__(self):
+        self.item_prices = {"box": "$5", "envelope": "$2", "gants": "$1"}
+
+        price_function = {
+            "name": "get_item_price",
+            "description": "Get the price of an item. Call this whenever you need to know the item price, for example when a user asks 'How much does this item cost ?'",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "item": {
+                        "type": "string",
+                        "description": "The item that the user asks",
+                    },
                 },
-            },
-            "required": ["item"], # LLM will perform intent detection, then entity extraction (with semantic search & correcting typos) for us
-            "additionalProperties": False
+                "required": ["item"], # LLM will perform intent detection, then entity extraction (with semantic search & correcting typos) for us
+                "additionalProperties": False
+            }
         }
-    }
-    tools = [{"type": "function", "function": price_function}]
+        self.tools = [{"type": "function", "function": price_function}]
 
 
-    def get_item_price(item):
+    def get_item_price(self, item):
         print(f"Tool get_item_price called for {item}")
         item = item.lower()
-        return ItemPrice.item_prices.get(item, "Unknown")
+        return self.item_prices.get(item, "Unknown")
 
 
 class GenerateCards:
 
-    gen_card_function = {
-        "name": "generate_gift_card",
-        "description": "Generate Image Gift Card. Call this whenever a user asks 'Generate an image gift card to someone with the name ...'",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string",
-                    "description": "The name of the person that the card is sent to",
+    def __init__(self):
+        gen_card_function = {
+            "name": "generate_gift_card",
+            "description": "Generate Image Gift Card. Call this whenever a user asks 'Generate an image gift card to someone with the name ...'",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "The name of the person that the card is sent to",
+                    },
                 },
-            },
-            "required": ["name"], # LLM will perform intent detection, then entity extraction (with semantic search & correcting typos) for us
-            "additionalProperties": False
+                "required": ["name"], # LLM will perform intent detection, then entity extraction (with semantic search & correcting typos) for us
+                "additionalProperties": False
+            }
         }
-    }
-    tools = [{"type": "function", "function": gen_card_function}]
+        
+        self.tools = [{"type": "function", "function": gen_card_function}]
 
-    def genImage(name):
+    def genImage(self, name):
 
         print(f"Tool genImage called for {name}")
 

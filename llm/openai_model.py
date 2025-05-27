@@ -17,9 +17,15 @@ from langchain.schema import SystemMessage
 
 openai.api_key = OPENAI_API_KEY
 
-class ChatbotLangChain():
+class OpenAIChatbot():
 
     def __init__(self):
+        self.init_openai_with_kb_langchain()
+        # self.init_openai_with_kb()
+        # self.init_openai_with_tool()
+
+
+    def init_openai_with_kb_langchain(self):
         ##### Prompt
         system_prompt = '''
                 You are a helpful and professional virtual assistant for Parcel Perform, a global parcel tracking and delivery performance platform.
@@ -64,16 +70,16 @@ class ChatbotLangChain():
         embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 
         # Init KnowledgeBaseLangchainReader
-        KnowledgeBaseLangchainReader.read_file()
+        knowledgebaes_langchain_read = KnowledgeBaseLangchainReader()
 
         # # Chroma (SQL Lite)    
         # db_name = "product_vector_db"
         # if os.path.exists(db_name):
         #     Chroma(persist_directory=db_name, embedding_function=embeddings).delete_collection()
-        # vectorstore = Chroma.from_documents(documents=KnowledgeBaseLangchainReader.chunks, embedding=embeddings, persist_directory=db_name)
+        # vectorstore = Chroma.from_documents(documents=knowledgebaes_langchain_read.chunks, embedding=embeddings, persist_directory=db_name)
         
         # FAISS
-        vectorstore = FAISS.from_documents(KnowledgeBaseLangchainReader.chunks, embedding=embeddings)
+        vectorstore = FAISS.from_documents(knowledgebaes_langchain_read.chunks, embedding=embeddings)
         
         # the retriever is an abstraction over the VectorStore that will be used during RAG
         retriever = vectorstore.as_retriever() # search_kwargs={"k": 25} : can tune how many chunks to use in RAG
@@ -97,7 +103,6 @@ class ChatbotLangChain():
         #                                 prompt=chat_prompt, 
         #                                 memory=memory) 
 
-
     def call_openai_with_kb_langchain(self, messages):
         ''' messages including system_prompt + history(user & assistant messages) + new message 
                 => Langchain already handle chat history, we just need to use the new message
@@ -120,114 +125,123 @@ class ChatbotLangChain():
         return response_text, image
 
 
+    def init_openai_with_kb(self):
+        self.knowledgebase_reader = KnowledgeBaseReader()
+        self.item_price = ItemPrice()
+        self.generate_cards = GenerateCards()
 
-def call_openai_with_kb(messages):
-    ''' messages including system_prompt + history(user & assistant messages) + new message 
-        Instead of relying on LLM tool to do intent detection (with semantic search) & entity extraction, we'll manually do it by ourself
-    '''
 
-    # Retrieve context from the last user message to get Product Description & Price
-    context_message_prompt = "\n\nThe following additional context might be relevant in answering this question:\n\n"
-    context_message = KnowledgeBaseReader.retrieve_context(messages[-1]["content"]) 
-    print("context_message: ", context_message)
+    def call_openai_with_kb(self, messages):
+        ''' messages including system_prompt + history(user & assistant messages) + new message 
+            Instead of relying on LLM tool to do intent detection (with semantic search) & entity extraction, we'll manually do it by ourself
+        '''
 
-    if context_message != "":
-        # Give more info to LLM
-        context_message_prompt += context_message
-        messages.append({"role": "user", "content": context_message_prompt})
+        # Retrieve context from the last user message to get Product Description & Price
+        context_message_prompt = "\n\nThe following additional context might be relevant in answering this question:\n\n"
+        context_message = self.knowledgebase_reader.retrieve_context(messages[-1]["content"]) 
+        print("context_message: ", context_message)
 
-    image = None
-    response = openai.chat.completions.create(
-        model=OPENAI_MODEL,
-        messages=messages,
-        tools= GenerateCards.tools,
-        temperature=OPENAI_TEMPERATURE
-    )
+        if context_message != "":
+            # Give more info to LLM
+            context_message_prompt += context_message
+            messages.append({"role": "user", "content": context_message_prompt})
 
-    if response.choices[0].finish_reason=="tool_calls": # default finish_reason = 'stop'
-        # assistant call tool
-        message = response.choices[0].message 
-        response, image = handle_tool_call(message)
-        messages.append(message)
-        messages.append(response)
-
-        # assistant wrap retrieved item price and write answer text back to user
+        image = None
         response = openai.chat.completions.create(
-            model=OPENAI_MODEL, 
-            messages=messages
-        ) 
+            model=OPENAI_MODEL,
+            messages=messages,
+            tools=self.generate_cards.tools,
+            temperature=OPENAI_TEMPERATURE
+        )
 
-    response_text = response.choices[0].message.content
+        if response.choices[0].finish_reason=="tool_calls": # default finish_reason = 'stop'
+            # assistant call tool
+            message = response.choices[0].message 
+            response, image = self.handle_tool_call(message)
+            messages.append(message)
+            messages.append(response)
 
-    # call speaker
-    # Speaker.speak(response_text)
-    
-    return response_text, image
+            # assistant wrap retrieved item price and write answer text back to user
+            response = openai.chat.completions.create(
+                model=OPENAI_MODEL, 
+                messages=messages
+            ) 
+
+        response_text = response.choices[0].message.content
+
+        # call speaker
+        # Speaker.speak(response_text)
+        
+        return response_text, image
 
 
-############################################################
+    ############################################################
+
+    def init_openai_with_tool(self):
+        self.item_price = ItemPrice()
+        self.generate_cards = GenerateCards()
 
 
-def call_openai_with_tool(messages):
-    ''' messages including system_prompt + history(user & assistant messages) + new message '''
-    image = None
+    def call_openai_with_tool(self, messages):
+        ''' messages including system_prompt + history(user & assistant messages) + new message '''
+        image = None
 
-    response = openai.chat.completions.create(
-        model=OPENAI_MODEL,
-        messages=messages,
-        tools= ItemPrice.tools + GenerateCards.tools,
-        temperature=OPENAI_TEMPERATURE
-    )
-
-    if response.choices[0].finish_reason=="tool_calls": # default finish_reason = 'stop'
-        # assistant call tool
-        message = response.choices[0].message 
-        response, image = handle_tool_call(message)
-        messages.append(message)
-        messages.append(response)
-
-        # assistant wrap retrieved item price and write answer text back to user
         response = openai.chat.completions.create(
-            model=OPENAI_MODEL, 
-            messages=messages
-        ) 
+            model=OPENAI_MODEL,
+            messages=messages,
+            tools=self.item_price.tools + self.generate_cards.tools,
+            temperature=OPENAI_TEMPERATURE
+        )
 
-    response_text = response.choices[0].message.content
+        if response.choices[0].finish_reason=="tool_calls": # default finish_reason = 'stop'
+            # assistant call tool
+            message = response.choices[0].message 
+            response, image = self.handle_tool_call(message)
+            messages.append(message)
+            messages.append(response)
 
-    # call speaker
-    # Speaker.speak(response_text)
-    
-    return response_text, image
+            # assistant wrap retrieved item price and write answer text back to user
+            response = openai.chat.completions.create(
+                model=OPENAI_MODEL, 
+                messages=messages
+            ) 
+
+        response_text = response.choices[0].message.content
+
+        # call speaker
+        # Speaker.speak(response_text)
+        
+        return response_text, image
 
 
-def handle_tool_call(message):
-    tool_call = message.tool_calls[0]
-    arguments = json.loads(tool_call.function.arguments)
-    tool_name = tool_call.function.name
-    image = None
+    def handle_tool_call(self, message):
+        tool_call = message.tool_calls[0]
+        arguments = json.loads(tool_call.function.arguments)
+        tool_name = tool_call.function.name
+        image = None
 
-    # tool reponse with price (or unknown)
-    if tool_name == "get_item_price":
-        item = arguments.get('item')
-        price = ItemPrice.get_item_price(item)
-        response = {
-            "role": "tool",
-            "content": json.dumps({"item": item, "price": price}),
-            "tool_call_id": tool_call.id
-        } 
-    elif tool_name == "generate_gift_card":
-        name = arguments.get('name')
-        response = {
-            "role": "tool",
-            "content": name,
-            "tool_call_id": tool_call.id
-        } 
-        image = GenerateCards.genImage(name)
-    else:
-        response = {
-            "role": "tool",
-            "content": "unknown",
-            "tool_call_id": tool_call.id
-        } 
+        # tool reponse with price (or unknown)
+        if tool_name == "get_item_price":
+            item = arguments.get('item')
+            price = self.item_price.get_item_price(item)
+            response = {
+                "role": "tool",
+                "content": json.dumps({"item": item, "price": price}),
+                "tool_call_id": tool_call.id
+            } 
+        elif tool_name == "generate_gift_card":
+            name = arguments.get('name')
+            response = {
+                "role": "tool",
+                "content": name,
+                "tool_call_id": tool_call.id
+            } 
+            image = self.generate_cards.genImage(name)
+        else:
+            response = {
+                "role": "tool",
+                "content": "unknown",
+                "tool_call_id": tool_call.id
+            } 
 
-    return response, image
+        return response, image

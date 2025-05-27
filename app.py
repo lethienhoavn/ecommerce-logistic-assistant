@@ -1,6 +1,7 @@
 import gradio as gr
-from chatbot.handler import stream_openai
+from chatbot.handler import Handler
 
+handler = Handler()
 
 with gr.Blocks() as app:
     gr.HTML("<h1 style='text-align:center; color:#2c3e50;'>🤖 Ecom-Logistic Assistant</h1>")
@@ -18,7 +19,7 @@ with gr.Blocks() as app:
         return "", history
 
     entry.submit(do_entry, inputs=[entry, chatbot], outputs=[entry, chatbot]).then(
-        stream_openai, inputs=chatbot, outputs=[chatbot, image_output]
+        handler.streaming, inputs=chatbot, outputs=[chatbot, image_output]
     )
     clear.click(lambda: (None, gr.update(visible=False)), inputs=None, outputs=chatbot, queue=False)
 

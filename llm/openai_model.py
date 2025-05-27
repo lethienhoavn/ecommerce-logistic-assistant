@@ -66,31 +66,39 @@ class OpenAIChatbot():
         )
 
         ##### Create Vector DB
-        print("Initializing Retriever, this may take a while....")
+        print("Load embeddings...")
         embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+        faiss_index_path = "resources/faiss_index"
 
-        # Init KnowledgeBaseLangchainReader
-        knowledgebaes_langchain_read = KnowledgeBaseLangchainReader()
+        if (not os.path.exists(faiss_index_path)):
+            print("Initializing Retriever, this may take a while....")
 
-        # # Chroma (SQL Lite)    
-        # db_name = "product_vector_db"
-        # if os.path.exists(db_name):
-        #     Chroma(persist_directory=db_name, embedding_function=embeddings).delete_collection()
-        # vectorstore = Chroma.from_documents(documents=knowledgebaes_langchain_read.chunks, embedding=embeddings, persist_directory=db_name)
-        
-        # FAISS
-        vectorstore = FAISS.from_documents(knowledgebaes_langchain_read.chunks, embedding=embeddings)
+            # Init KnowledgeBaseLangchainReader
+            knowledgebaes_langchain_read = KnowledgeBaseLangchainReader()
+
+            # # Chroma (SQL Lite)    
+            # db_name = "resources/product_vector_db"
+            # if os.path.exists(db_name): # delete old collection otherwise duplicated
+            #     Chroma(persist_directory=db_name, embedding_function=embeddings).delete_collection()
+            # vectorstore = Chroma.from_documents(documents=knowledgebaes_langchain_read.chunks, embedding=embeddings, persist_directory=db_name)
+            
+            # FAISS
+            vectorstore = FAISS.from_documents(knowledgebaes_langchain_read.chunks, embedding=embeddings)
+            vectorstore.save_local(faiss_index_path)
+        else:
+            print("Load faiss index from file...")
+            vectorstore = FAISS.load_local(faiss_index_path, embeddings, allow_dangerous_deserialization=True)
         
         # the retriever is an abstraction over the VectorStore that will be used during RAG
         retriever = vectorstore.as_retriever() # search_kwargs={"k": 25} : can tune how many chunks to use in RAG
 
         ##### Create Conversation Chain
         # create a new Chat with OpenAI
-        llm = ChatOpenAI(temperature=0.7, model_name=OPENAI_MODEL)
+        llm = ChatOpenAI(temperature=0.7, model_name=OPENAI_MODEL) # verbose=True
 
         # set up the conversation memory for the chat
-        memory = ConversationBufferMemory(chat_memory=FileChatMessageHistory("resources/chat_history.json"),
-                                            memory_key='chat_history', 
+        memory = ConversationBufferMemory(memory_key='chat_history', 
+                                            # chat_memory=FileChatMessageHistory("resources/chat_history.json"), # when history is long, input is very lengthy => better to use ConversationSummaryMemory than ConversationBufferMemory + FileChatMessageHistory (but with the cost of slower result because of 2 LLM passes)
                                             return_messages=True)
 
         # putting it together: set up the conversation chain with the GPT 4o-mini LLM, the vector store and memory
@@ -101,7 +109,7 @@ class OpenAIChatbot():
 
         # self.conversation_chain = LLMChain(llm=llm,
         #                                 prompt=chat_prompt, 
-        #                                 memory=memory) 
+        #                                 memory=memory)  # verbose=True
 
     def call_openai_with_kb_langchain(self, messages):
         ''' messages including system_prompt + history(user & assistant messages) + new message 

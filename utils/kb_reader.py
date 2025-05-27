@@ -22,7 +22,8 @@ class KnowledgeBaseLangchainReader:
             }
             documents.append(Document(page_content=content, metadata=metadata))
         
-        text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+        # Accumulate each phrase, split by separater while phrases length <= chunk_size (not cut in the middle of a phrase)
+        text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=200) # separator=...
         self.chunks = text_splitter.split_documents(documents)
 
         print("len chunks: ", len(self.chunks))
@@ -43,7 +44,7 @@ class KnowledgeBaseReader:
 
         description = set()
         for item, desc in self.item2desc.items():
-            for word in ask_item.split(): # Drawback: word split & look up is not really right here => better to use phrase vector with semantic search !
+            for word in ask_item.split(): # Drawback: word split & look up is not really right here => better to use phrase vector with semantic search ! (cf. LangChain)
                 if word.lower() in item.lower():
                     description.add(desc)
         

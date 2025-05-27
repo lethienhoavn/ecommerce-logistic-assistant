@@ -1,3 +1,5 @@
+print("Loading libraries...")
+
 import gradio as gr
 from chatbot.handler import Handler
 

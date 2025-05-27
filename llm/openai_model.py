@@ -4,6 +4,7 @@ import os
 from config.settings import OPENAI_API_KEY, OPENAI_MODEL, OPENAI_TEMPERATURE
 from utils.tools import ItemPrice, GenerateCards, Speaker
 from utils.kb_reader import KnowledgeBaseReader, KnowledgeBaseLangchainReader
+from utils.dedup_retriever import DedupRetriever
 from langchain_huggingface import HuggingFaceEmbeddings
 # from langchain_chroma import Chroma
 from langchain_community.vectorstores import FAISS
@@ -14,8 +15,11 @@ from langchain.chains import ConversationalRetrievalChain, LLMChain, RetrievalQA
 from langchain.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, \
     HumanMessagePromptTemplate, MessagesPlaceholder
 from langchain.schema import SystemMessage
+import langchain
 
 openai.api_key = OPENAI_API_KEY
+
+# langchain.debug = True
 
 class OpenAIChatbot():
 
@@ -92,7 +96,11 @@ class OpenAIChatbot():
             vectorstore = FAISS.load_local(faiss_index_path, embeddings, allow_dangerous_deserialization=True)
         
         # the retriever is an abstraction over the VectorStore that will be used during RAG
-        retriever = vectorstore.as_retriever() # search_kwargs={"k": 25} : can tune how many chunks to use in RAG
+        # retriever = vectorstore.as_retriever() # search_kwargs={"k": 25} : can tune how many chunks to use in RAG
+        retriever = DedupRetriever(
+            embeddings=embeddings,
+            db=vectorstore
+        )
 
         ##### Create Conversation Chain
         # create a new Chat with OpenAI

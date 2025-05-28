@@ -9,6 +9,7 @@ config/.env
 *.log
 *.pyc
 .DS_Store
+*.mp3
 
 # tmp
 *.tmp

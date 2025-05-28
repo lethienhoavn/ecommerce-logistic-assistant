@@ -10,7 +10,7 @@ from datetime import datetime
 class ItemPrice:
 
     def __init__(self):
-        self.item_prices = {"box": "$5", "envelope": "$2", "gants": "$1"}
+        self.item_prices = {"earbuds": "49.99 USD", "backpack": "79.50 USD", "usb-c": "12.00 SGD", "smartwatch x pro": "199.00 EUR", "laptop sleeve": "19.99 USD"}
 
         price_function = {
             "name": "get_item_price",
@@ -61,18 +61,34 @@ class GenerateCards:
 
         print(f"Tool genImage called for {name}")
 
-        # image_response = openai.images.generate(
-        #         model="dall-e-3",
-        #         prompt=f"An image gift card with some nice words on that card to {name}",
-        #         size="1024x1024",
-        #         n=1,
-        #         response_format="b64_json",
-        #     )
-        # image_base64 = image_response.data[0].b64_json
-        # image_data = base64.b64decode(image_base64)
-        # return Image.open(BytesIO(image_data))
+        image_response = openai.images.generate(
+                model="dall-e-3",
+                prompt=f"An image gift card with some nice words on that card to {name}",
+                size="1024x1024",
+                n=1,
+                response_format="b64_json",
+            )
+        image_base64 = image_response.data[0].b64_json
+        image_data = base64.b64decode(image_base64)
 
-        return Image.open("resources/sample.jpg")
+        # Load image with PIL
+        image = Image.open(BytesIO(image_data))
+
+        # Prepare filename with timestamp: yy-mm-dd-hh-mm-ss
+        timestamp = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+        filename = f"generated_card_{timestamp}.png"
+
+        # Optional: make sure output directory exists
+        output_dir = "generated_images"
+        os.makedirs(output_dir, exist_ok=True)
+
+        # Save image
+        image_path = os.path.join(output_dir, filename)
+        image.save(image_path)
+
+        return image_path
+
+        # return Image.open("resources/sample.jpg")
 
 
 
@@ -90,9 +106,11 @@ class Speaker:
         if not os.path.exists(speaker_temp_dir):
             os.makedirs(speaker_temp_dir)
 
-        timestamp = datetime.now().strftime("%H_%M_%S") # %Y_%m_%d
+        timestamp = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
         output_filename = os.path.join(speaker_temp_dir, f"output_audio_{timestamp}.mp3")
         with open(output_filename, "wb") as f:
             f.write(audio_stream.read())
+            f.flush()               # Đẩy từ buffer Python → OS buffer
+            os.fsync(f.fileno())    # Đẩy từ OS buffer → đĩa thật
 
         playsound(output_filename)

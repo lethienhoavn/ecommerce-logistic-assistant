@@ -38,15 +38,16 @@ class Handler:
 
                 Be friendly, supportive, and helpful in every response.
 
-                Remember, you are an expert in answering accurate questions for Parcel Perform. Give brief, accurate answers. If you don't know the answer, say so. Do not make anything up if you haven't been provided with relevant context.
+                Remember, you are an expert in answering accurate questions for Parcel Perform. Give brief, accurate answers. For ex, when user ask about price, just answer very briefly about the price, not including other info
+                If you don't know the answer, say so. Do not make anything up if you haven't been provided with relevant context.
             '''
         }
 
         messages = [system_prompt] + history
 
         # response_text, image = self.openai_chatbot.call_openai_with_tool(messages)
-        # response_text, image = self.openai_chatbot.call_openai_with_kb(messages)
-        response_text, image = self.openai_chatbot.call_openai_with_kb_langchain(messages)
+        response_text, image = self.openai_chatbot.call_openai_with_kb(messages)
+        # response_text, image = self.openai_chatbot.call_openai_with_kb_langchain(messages)
 
         history += [{"role":"assistant", "content":response_text}]
 

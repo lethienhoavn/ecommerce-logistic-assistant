@@ -24,8 +24,8 @@ openai.api_key = OPENAI_API_KEY
 class OpenAIChatbot():
 
     def __init__(self):
-        self.init_openai_with_kb_langchain()
-        # self.init_openai_with_kb()
+        # self.init_openai_with_kb_langchain()
+        self.init_openai_with_kb()
         # self.init_openai_with_tool()
 
 
